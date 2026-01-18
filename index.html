@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>قائمتي - النسخة النهائية</title>
+    <title>قائمتي - النسخة الخارقة</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -75,8 +75,9 @@
         .btn-del { background: #ff4757; color: white; }
         .btn-watch { background: #ff0000; color: white; text-decoration: none; }
         
-        .surprise-box { background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%); padding: 30px 20px; border-radius: 25px; margin: 30px 0; text-align: center; }
-        .btn-surprise { background: white; color: var(--primary-color); padding: 12px 30px; border-radius: 50px; border: none; font-weight: 800; cursor: pointer; font-size: 1.1em; }
+        .ai-box { background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%); padding: 30px 20px; border-radius: 25px; margin: 30px 0; text-align: center; box-shadow: 0 10px 20px rgba(108, 92, 231, 0.3); }
+        .btn-ai { background: white; color: #6c5ce7; padding: 12px 30px; border-radius: 50px; border: none; font-weight: 800; cursor: pointer; font-size: 1.1em; transition: 0.3s; }
+        .btn-ai:hover { transform: scale(1.05); box-shadow: 0 5px 15px rgba(255,255,255,0.4); }
         
         .horizontal-scroll { display: flex; overflow-x: auto; gap: 15px; padding-bottom: 15px; scrollbar-width: none; }
         .mini-card { min-width: 150px; max-width: 150px; background: var(--card-bg); border-radius: 15px; overflow: hidden; border: 1px solid var(--border-color); transition: 0.3s; cursor: pointer; }
@@ -133,9 +134,10 @@
             <div id="watchingNow" class="cards-grid"></div>
         </section>
 
-        <div class="surprise-box">
-            <h3 style="margin-bottom:10px">🎲 اقتراحات عالمية ذكية</h3>
-            <button class="btn-surprise" onclick="surpriseMeGlobal()">اقترح لي شيئاً مذهلاً! ✨</button>
+        <div class="ai-box">
+            <h3 style="margin-bottom:10px; color:white">🧠 رادار الذكاء الاصطناعي</h3>
+            <p style="color:rgba(255,255,255,0.8); font-size:0.9em; margin-bottom:20px">سأحلل ذوقك وأقترح عليك فيلم السهرة المثالي!</p>
+            <button class="btn-ai" onclick="aiRecommendation()">اقترح لي حسب ذوقي ✨</button>
         </div>
 
         <section>
@@ -251,17 +253,35 @@
             `).join('');
         }
 
-        async function surpriseMeGlobal() {
-            const res = await fetch(`${BASE_URL}/movie/top_rated?api_key=${API_KEY}&language=ar&page=${Math.floor(Math.random()*10)+1}`);
+        async function aiRecommendation() {
+            const allItems = [...state.watching, ...state.watchlist, ...state.completed];
+            if (allItems.length === 0) return showMsg('أضف بعض الأفلام أولاً لأحلل ذوقك!');
+            
+            // تحليل أكثر تصنيف متكرر
+            const genreCounts = {};
+            allItems.forEach(item => {
+                if (item.genre_ids) {
+                    item.genre_ids.forEach(id => genreCounts[id] = (genreCounts[id] || 0) + 1);
+                }
+            });
+            const topGenre = Object.keys(genreCounts).reduce((a, b) => genreCounts[a] > genreCounts[b] ? a : b);
+            
+            const res = await fetch(`${BASE_URL}/discover/movie?api_key=${API_KEY}&language=ar&with_genres=${topGenre}&sort_by=vote_average.desc&vote_count.gte=500&page=${Math.floor(Math.random()*5)+1}`);
             const data = await res.json();
             const i = data.results[Math.floor(Math.random()*data.results.length)];
+            
+            showModal(i, `بناءً على حبك لـ ${GENRES[topGenre]}، أقترح عليك:`);
+        }
+
+        function showModal(i, titlePrefix = '') {
             const modal = document.getElementById('suggestionModal');
             document.getElementById('modalContent').innerHTML = `
                 <span class="close-modal" onclick="closeModal()">&times;</span>
                 <img src="${IMG_URL + i.poster_path}" style="width:100%; height:300px; object-fit:cover">
                 <div style="padding:20px">
-                    <h3>${i.title}</h3>
-                    <p style="font-size:0.85em; color:var(--text-secondary); margin:10px 0">${i.overview.substring(0, 150)}...</p>
+                    <p style="color:var(--secondary-color); font-weight:bold; font-size:0.8em; margin-bottom:5px">${titlePrefix}</p>
+                    <h3>${i.title || i.name}</h3>
+                    <p style="font-size:0.85em; color:var(--text-secondary); margin:10px 0">${i.overview ? i.overview.substring(0, 150) + '...' : 'لا يوجد وصف متاح.'}</p>
                     <button class="btn btn-add" onclick='addItem(${JSON.stringify(i).replace(/'/g, "&apos;")}); closeModal();'>إضافة لقائمتي</button>
                 </div>
             `;
@@ -284,6 +304,7 @@
             const item = {
                 id: i.id, title: i.title || i.name, type: i.media_type || (i.title ? 'movie' : 'tv'),
                 poster: i.poster_path, globalRating: i.vote_average,
+                genre_ids: i.genre_ids || [],
                 genres: i.genre_ids ? i.genre_ids.slice(0,2).map(id => GENRES[id]).join(' - ') : 'غير مصنف',
                 season: 1, ep: 1, rating: 0, added: new Date().getTime(), completed: null
             };
@@ -349,9 +370,9 @@
                 </div>
             `;
 
-            document.getElementById('watchingNow').innerHTML = watching.map(i => renderCard(i, 'watching')).join('') || '<div class="empty-state">لا يوجد شيء حالياً</div>';
-            document.getElementById('watchlist').innerHTML = watchlist.map(i => renderCard(i, 'watchlist')).join('') || '<div class="empty-state">القائمة فارغة</div>';
-            document.getElementById('completed').innerHTML = completed.map(i => renderCard(i, 'completed')).join('') || '<div class="empty-state">لا يوجد مكتمل</div>';
+            document.getElementById('watchingNow').innerHTML = watching.map(i => renderCard(i, 'watching')).join('') || '<div style="text-align:center; padding:20px; color:var(--text-secondary)">لا يوجد شيء حالياً</div>';
+            document.getElementById('watchlist').innerHTML = watchlist.map(i => renderCard(i, 'watchlist')).join('') || '<div style="text-align:center; padding:20px; color:var(--text-secondary)">القائمة فارغة</div>';
+            document.getElementById('completed').innerHTML = completed.map(i => renderCard(i, 'completed')).join('') || '<div style="text-align:center; padding:20px; color:var(--text-secondary)">لا يوجد مكتمل</div>';
         }
 
         function startWatch(id) {
