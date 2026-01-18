@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>قائمتي Pro Drive - النسخة النهائية</title>
+    <title>قائمتي - النسخة النهائية</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -22,7 +22,6 @@
 
         body.theme-netflix { --primary-color: #e50914; --secondary-color: #221f1f; }
         body.theme-disney { --primary-color: #0063e5; --secondary-color: #040714; }
-        body.theme-forest { --primary-color: #2ecc71; --secondary-color: #27ae60; }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Cairo', sans-serif; background: var(--dark-bg); color: var(--text-primary); min-height: 100vh; padding: 20px; transition: all 0.4s ease; overflow-x: hidden; }
@@ -31,9 +30,8 @@
         .header { text-align: center; margin-bottom: 30px; padding: 30px; background: linear-gradient(145deg, var(--darker-bg), var(--card-bg)); border-radius: 24px; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
         .header h1 { font-size: 2.5em; margin-bottom: 10px; background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
         
-        .drive-sync-panel { background: rgba(108, 92, 231, 0.1); border: 1px solid var(--primary-color); padding: 20px; border-radius: 20px; margin-bottom: 30px; text-align: center; }
-        .drive-title { font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--warning-color); }
-        .drive-btns { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-top: 15px; }
+        .top-controls { position: absolute; top: 20px; left: 20px; display: flex; gap: 10px; }
+        .theme-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid white; }
 
         .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .stat-card { background: var(--card-bg); padding: 15px; border-radius: 15px; text-align: center; border: 1px solid var(--border-color); }
@@ -58,7 +56,6 @@
         .card-poster-wrapper { position: relative; height: 320px; width: 100%; }
         .card-poster { height: 100%; width: 100%; object-fit: cover; }
         .global-rating-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: var(--warning-color); padding: 4px 10px; border-radius: 10px; font-size: 0.85em; font-weight: 800; }
-        .completion-badge { position: absolute; top: 10px; right: 10px; background: var(--success-color); color: white; padding: 4px 10px; border-radius: 10px; font-size: 0.75em; font-weight: 800; }
         
         .card-content { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
         .card-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 5px; margin-bottom: 5px; }
@@ -99,24 +96,13 @@
 <body id="body">
     <div class="container">
         <header class="header">
-            <h1>قائمتي Pro Drive</h1>
+            <h1>قائمتي</h1>
             <div class="top-controls">
                 <div class="theme-dot" style="background: #6c5ce7" onclick="setTheme('default')"></div>
                 <div class="theme-dot" style="background: #e50914" onclick="setTheme('netflix')"></div>
                 <div class="theme-dot" style="background: #0063e5" onclick="setTheme('disney')"></div>
             </div>
         </header>
-
-        <div class="drive-sync-panel">
-            <div class="drive-title">📂 مركز النسخ الاحتياطي (Google Drive)</div>
-            <p style="font-size:0.85em; opacity:0.8">لحفظ بياناتك أونلاين: اضغط "تصدير" واحفظ الملف في Google Drive. للاستعادة: اضغط "استيراد" واختر الملف من Drive.</p>
-            <div class="drive-btns">
-                <button class="btn btn-add" style="flex:none; padding:10px 25px" onclick="exportData()">تصدير لـ Google Drive ⬆️</button>
-                <button class="btn btn-plus" style="flex:none; padding:10px 25px" onclick="document.getElementById('importFile').click()">استيراد من Google Drive ⬇️</button>
-                <input type="file" id="importFile" style="display:none" onchange="importData(event)">
-            </div>
-            <div id="lastSync" style="font-size:0.75em; margin-top:10px; color:var(--secondary-color)"></div>
-        </div>
 
         <div class="stats-bar" id="statsBar"></div>
 
@@ -166,11 +152,6 @@
             <h2 class="section-title">✨ الرائج عالمياً</h2>
             <div id="trendingMovies" class="horizontal-scroll"></div>
         </section>
-
-        <div id="recommendations" class="rec-section">
-            <h2 class="section-title">💡 مقترح لك</h2>
-            <div id="recGrid" class="search-results"></div>
-        </div>
     </div>
 
     <div id="suggestionModal" class="modal">
@@ -186,20 +167,19 @@
         
         const GENRES = { 28: "أكشن", 12: "مغامرة", 16: "أنيميشن", 35: "كوميدي", 80: "جريمة", 99: "وثائقي", 18: "دراما", 10751: "عائلي", 14: "خيال", 36: "تاريخ", 27: "رعب", 10402: "موسيقى", 9648: "غموض", 10749: "رومانسية", 878: "خيال علمي", 10770: "فيلم تلفزيوني", 53: "إثارة", 10752: "حرب", 37: "وسترن", 10759: "أكشن ومغامرة", 10762: "أطفال", 10763: "أخبار", 10764: "واقع", 10765: "خيال وعلمي", 10766: "أوبرا صابونية", 10767: "حوار", 10768: "حرب وسياسة" };
 
-        let state = { watching: [], watchlist: [], completed: [], theme: 'default', filter: 'all', lastSync: null };
+        let state = { watching: [], watchlist: [], completed: [], theme: 'default', filter: 'all' };
 
         function init() {
-            const saved = localStorage.getItem('myWatchlistProDriveV8');
+            const saved = localStorage.getItem('myWatchlistFinal');
             if (saved) state = JSON.parse(saved);
             setTheme(state.theme || 'default');
             populateFilterOptions();
             fetchTrending();
             render();
-            if (state.lastSync) document.getElementById('lastSync').textContent = 'آخر تصدير: ' + state.lastSync;
         }
 
         function save() {
-            localStorage.setItem('myWatchlistProDriveV8', JSON.stringify(state));
+            localStorage.setItem('myWatchlistFinal', JSON.stringify(state));
             render();
         }
 
@@ -313,29 +293,6 @@
             showMsg('تمت الإضافة ✓');
         }
 
-        function exportData() {
-            state.lastSync = new Date().toLocaleString('ar-SA');
-            const blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `قائمتي_نسخة_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            save();
-            showMsg('تم التصدير! احفظ الملف في Google Drive الآن.');
-        }
-
-        function importData(e) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                state = JSON.parse(event.target.result);
-                save();
-                showMsg('تم الاستيراد بنجاح! 🎉');
-                location.reload();
-            };
-            reader.readAsText(e.target.files[0]);
-        }
-
         function render() {
             const filter = (list) => list.filter(i => state.filter === 'all' || i.type === state.filter);
             const watching = filter(state.watching);
@@ -353,7 +310,6 @@
                     <div class="card-poster-wrapper">
                         <img src="${IMG_URL + i.poster}" class="card-poster">
                         <div class="global-rating-badge">⭐ ${i.globalRating ? i.globalRating.toFixed(1) : 'N/A'}</div>
-                        ${i.completed ? `<div class="completion-badge">✅ ${i.completed}</div>` : ''}
                     </div>
                     <div class="card-content">
                         <div class="card-title-row">
