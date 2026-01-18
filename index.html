@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>قائمتي - النسخة الخارقة</title>
+    <title>قائمتي - النسخة الأسطورية</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -51,7 +51,7 @@
         .section-title { font-size: 1.4em; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-weight: 700; border-right: 4px solid var(--primary-color); padding-right: 10px; }
         .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; margin-bottom: 40px; }
         
-        .card { background: var(--card-bg); border-radius: 20px; overflow: hidden; border: 1px solid var(--border-color); transition: 0.3s; position: relative; display: flex; flex-direction: column; }
+        .card { background: var(--card-bg); border-radius: 20px; overflow: hidden; border: 1px solid var(--border-color); transition: 0.3s; position: relative; display: flex; flex-direction: column; cursor: pointer; }
         .card:hover { transform: translateY(-5px); border-color: var(--primary-color); }
         .card-poster-wrapper { position: relative; height: 320px; width: 100%; }
         .card-poster { height: 100%; width: 100%; object-fit: cover; }
@@ -82,15 +82,27 @@
         .horizontal-scroll { display: flex; overflow-x: auto; gap: 15px; padding-bottom: 15px; scrollbar-width: none; }
         .mini-card { min-width: 150px; max-width: 150px; background: var(--card-bg); border-radius: 15px; overflow: hidden; border: 1px solid var(--border-color); transition: 0.3s; cursor: pointer; }
 
-        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; padding: 20px; }
-        .modal-content { background: var(--card-bg); border-radius: 25px; max-width: 450px; width: 100%; overflow: hidden; border: 1px solid var(--primary-color); position: relative; }
-        .close-modal { position: absolute; top: 15px; right: 20px; color: white; font-size: 28px; cursor: pointer; z-index: 10; }
+        /* Modal Styles */
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(5px); }
+        .modal-content { background: var(--card-bg); border-radius: 25px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; border: 1px solid var(--primary-color); position: relative; box-shadow: 0 0 50px rgba(108, 92, 231, 0.3); }
+        .close-modal { position: absolute; top: 15px; right: 20px; color: white; font-size: 28px; cursor: pointer; z-index: 10; background: rgba(0,0,0,0.5); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        
+        .modal-body { padding: 25px; }
+        .modal-poster { width: 100%; height: 350px; object-fit: cover; border-radius: 20px; margin-bottom: 20px; }
+        .modal-title { font-size: 1.8em; font-weight: 800; margin-bottom: 10px; color: var(--primary-color); }
+        .modal-meta { display: flex; gap: 15px; margin-bottom: 15px; font-size: 0.9em; color: var(--text-secondary); }
+        .modal-overview { line-height: 1.6; margin-bottom: 20px; color: #eee; }
+        .cast-list { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-top: 10px; }
+        .cast-item { min-width: 80px; text-align: center; }
+        .cast-img { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin-bottom: 5px; border: 2px solid var(--primary-color); }
+        .cast-name { font-size: 0.7em; color: var(--text-secondary); }
 
         #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--primary-color); padding: 10px 25px; border-radius: 50px; display: none; z-index: 3000; box-shadow: 0 5px 15px rgba(0,0,0,0.3); color: white; font-weight: 700; }
 
         @media (max-width: 600px) {
             .cards-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
             .card-poster-wrapper { height: 220px; }
+            .modal-poster { height: 250px; }
         }
     </style>
 </head>
@@ -156,8 +168,14 @@
         </section>
     </div>
 
-    <div id="suggestionModal" class="modal">
-        <div class="modal-content" id="modalContent"></div>
+    <!-- Modal for Details -->
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <div id="modalBody" class="modal-body">
+                <!-- Content injected by JS -->
+            </div>
+        </div>
     </div>
 
     <div id="toast"></div>
@@ -194,7 +212,7 @@
         function setFilter(f) {
             state.filter = f;
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            if (event) event.target.classList.add('active');
             render();
         }
 
@@ -218,7 +236,7 @@
                 const res = await fetch(`${BASE_URL}/trending/all/day?api_key=${API_KEY}&language=ar`);
                 const data = await res.json();
                 document.getElementById('trendingMovies').innerHTML = data.results.map(i => `
-                    <div class="mini-card" onclick='addItem(${JSON.stringify(i).replace(/'/g, "&apos;")})'>
+                    <div class="mini-card" onclick='showDetails(${JSON.stringify(i).replace(/'/g, "&apos;")})'>
                         <img src="${IMG_URL + i.poster_path}" style="width:100%; height:200px; object-fit:cover">
                         <div style="padding:8px; font-size:0.75em; font-weight:bold; text-align:center; height:3em; overflow:hidden">${i.title || i.name}</div>
                     </div>
@@ -243,21 +261,56 @@
             const res = await fetch(url);
             const data = await res.json();
             document.getElementById('searchResults').innerHTML = data.results.filter(i => i.poster_path).slice(0, 12).map(i => `
-                <div class="card" style="height: auto; padding: 5px;">
+                <div class="card" style="height: auto; padding: 5px;" onclick='showDetails(${JSON.stringify(i).replace(/'/g, "&apos;")})'>
                     <img src="${IMG_URL + i.poster_path}" style="width:100%; height:180px; object-fit:cover; border-radius:10px">
                     <div style="padding:10px">
                         <div style="font-size: 0.85em; font-weight: bold; margin-bottom: 5px; height:2.4em; overflow:hidden">${i.title || i.name}</div>
-                        <button class="btn btn-add" style="font-size:0.75em" onclick='addItem(${JSON.stringify(i).replace(/'/g, "&apos;")})'>إضافة</button>
+                        <button class="btn btn-add" style="font-size:0.75em" onclick='event.stopPropagation(); addItem(${JSON.stringify(i).replace(/'/g, "&apos;")})'>إضافة</button>
                     </div>
                 </div>
             `).join('');
+        }
+
+        async function showDetails(i) {
+            const modal = document.getElementById('detailsModal');
+            const type = i.media_type || (i.title ? 'movie' : 'tv');
+            
+            // Fetch Cast
+            let castHtml = '';
+            try {
+                const castRes = await fetch(`${BASE_URL}/${type}/${i.id}/credits?api_key=${API_KEY}&language=ar`);
+                const castData = await castRes.json();
+                castHtml = castData.cast.slice(0, 8).map(c => `
+                    <div class="cast-item">
+                        <img src="${c.profile_path ? IMG_URL + c.profile_path : 'https://via.placeholder.com/60'}" class="cast-img">
+                        <div class="cast-name">${c.name}</div>
+                    </div>
+                `).join('');
+            } catch(e) {}
+
+            document.getElementById('modalBody').innerHTML = `
+                <img src="${IMG_URL + i.poster_path}" class="modal-poster">
+                <div class="modal-title">${i.title || i.name}</div>
+                <div class="modal-meta">
+                    <span>⭐ ${i.vote_average ? i.vote_average.toFixed(1) : 'N/A'}</span>
+                    <span>📅 ${i.release_date || i.first_air_date || 'غير معروف'}</span>
+                    <span>🎬 ${type === 'movie' ? 'فيلم' : 'مسلسل'}</span>
+                </div>
+                <div class="modal-overview">${i.overview || 'لا يوجد وصف متاح حالياً.'}</div>
+                <h4 style="margin-bottom:10px">👥 طاقم العمل:</h4>
+                <div class="cast-list">${castHtml || 'غير متوفر'}</div>
+                <div style="margin-top:25px; display:flex; gap:10px">
+                    <button class="btn btn-add" onclick='addItem(${JSON.stringify(i).replace(/'/g, "&apos;")}); closeModal();'>إضافة للقائمة</button>
+                    <a href="https://www.youtube.com/results?search_query=${encodeURIComponent((i.title || i.name) + ' trailer')}" target="_blank" class="btn btn-watch">مشاهدة الإعلان 🎬</a>
+                </div>
+            `;
+            modal.style.display = 'flex';
         }
 
         async function aiRecommendation() {
             const allItems = [...state.watching, ...state.watchlist, ...state.completed];
             if (allItems.length === 0) return showMsg('أضف بعض الأفلام أولاً لأحلل ذوقك!');
             
-            // تحليل أكثر تصنيف متكرر
             const genreCounts = {};
             allItems.forEach(item => {
                 if (item.genre_ids) {
@@ -270,25 +323,11 @@
             const data = await res.json();
             const i = data.results[Math.floor(Math.random()*data.results.length)];
             
-            showModal(i, `بناءً على حبك لـ ${GENRES[topGenre]}، أقترح عليك:`);
+            showDetails(i);
+            showMsg('تم العثور على اقتراح يناسب ذوقك! ✨');
         }
 
-        function showModal(i, titlePrefix = '') {
-            const modal = document.getElementById('suggestionModal');
-            document.getElementById('modalContent').innerHTML = `
-                <span class="close-modal" onclick="closeModal()">&times;</span>
-                <img src="${IMG_URL + i.poster_path}" style="width:100%; height:300px; object-fit:cover">
-                <div style="padding:20px">
-                    <p style="color:var(--secondary-color); font-weight:bold; font-size:0.8em; margin-bottom:5px">${titlePrefix}</p>
-                    <h3>${i.title || i.name}</h3>
-                    <p style="font-size:0.85em; color:var(--text-secondary); margin:10px 0">${i.overview ? i.overview.substring(0, 150) + '...' : 'لا يوجد وصف متاح.'}</p>
-                    <button class="btn btn-add" onclick='addItem(${JSON.stringify(i).replace(/'/g, "&apos;")}); closeModal();'>إضافة لقائمتي</button>
-                </div>
-            `;
-            modal.style.display = 'flex';
-        }
-
-        function closeModal() { document.getElementById('suggestionModal').style.display = 'none'; }
+        function closeModal() { document.getElementById('detailsModal').style.display = 'none'; }
 
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => showMsg('تم نسخ: ' + text));
@@ -327,7 +366,7 @@
             `;
 
             const renderCard = (i, list) => `
-                <div class="card">
+                <div class="card" onclick='showDetails(${JSON.stringify(i).replace(/'/g, "&apos;")})'>
                     <div class="card-poster-wrapper">
                         <img src="${IMG_URL + i.poster}" class="card-poster">
                         <div class="global-rating-badge">⭐ ${i.globalRating ? i.globalRating.toFixed(1) : 'N/A'}</div>
@@ -335,16 +374,16 @@
                     <div class="card-content">
                         <div class="card-title-row">
                             <div class="card-title">${i.title}</div>
-                            <button class="copy-btn" onclick="copyToClipboard('${i.title}')">📋</button>
+                            <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('${i.title}')">📋</button>
                         </div>
                         <div class="card-genres">${i.genres}</div>
-                        <div class="rating-section">
+                        <div class="rating-section" onclick="event.stopPropagation()">
                             <div class="rating" onclick="setRating(${i.id}, ((${i.rating}+1)%6), '${list}')">
                                 ${'★'.repeat(i.rating)}${'☆'.repeat(5-i.rating)}
                             </div>
                         </div>
                         ${list === 'watching' ? `
-                            <div class="progress-box">
+                            <div class="progress-box" onclick="event.stopPropagation()">
                                 ${i.type==='tv' ? `
                                     <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9em">
                                         <span>الموسم: <input type="number" value="${i.season}" onchange="updateSeason(${i.id}, this.value)" style="width:50px; background:rgba(255,255,255,0.1); border:1px solid #444; color:white; text-align:center; border-radius:8px"></span>
@@ -353,7 +392,7 @@
                                 ` : '<div style="text-align:center; font-size:0.9em; color:var(--secondary-color)">🎬 فيلم سينمائي</div>'}
                             </div>
                         ` : ''}
-                        <div class="controls">
+                        <div class="controls" onclick="event.stopPropagation()">
                             ${list === 'watching' ? `
                                 ${i.type==='tv' ? `
                                     <button class="btn btn-plus" onclick="updateEp(${i.id}, 1)">+1</button>
@@ -370,9 +409,9 @@
                 </div>
             `;
 
-            document.getElementById('watchingNow').innerHTML = watching.map(i => renderCard(i, 'watching')).join('') || '<div style="text-align:center; padding:20px; color:var(--text-secondary)">لا يوجد شيء حالياً</div>';
-            document.getElementById('watchlist').innerHTML = watchlist.map(i => renderCard(i, 'watchlist')).join('') || '<div style="text-align:center; padding:20px; color:var(--text-secondary)">القائمة فارغة</div>';
-            document.getElementById('completed').innerHTML = completed.map(i => renderCard(i, 'completed')).join('') || '<div style="text-align:center; padding:20px; color:var(--text-secondary)">لا يوجد مكتمل</div>';
+            document.getElementById('watchingNow').innerHTML = watching.map(i => renderCard(i, 'watching')).join('') || '<div style="text-align:center; padding:20px; color:var(--text-secondary); grid-column: 1/-1;">لا يوجد شيء حالياً</div>';
+            document.getElementById('watchlist').innerHTML = watchlist.map(i => renderCard(i, 'watchlist')).join('') || '<div style="text-align:center; padding:20px; color:var(--text-secondary); grid-column: 1/-1;">القائمة فارغة</div>';
+            document.getElementById('completed').innerHTML = completed.map(i => renderCard(i, 'completed')).join('') || '<div style="text-align:center; padding:20px; color:var(--text-secondary); grid-column: 1/-1;">لا يوجد مكتمل</div>';
         }
 
         function startWatch(id) {
